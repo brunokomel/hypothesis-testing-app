@@ -1,1374 +1,521 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Z-Test Explorer</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-    <style>
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-      body {
-        font-family: 'Courier New', 'Lucida Console', monospace;
-      }
-      input[type='range'] {
-        cursor: pointer;
-      }
-      input[type='radio'],
-      input[type='checkbox'] {
-        cursor: pointer;
-      }
-      sub {
-        font-size: 0.75em;
-      }
-      .theme-toggle {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        cursor: pointer;
-        padding: 5px 12px;
-        border-radius: 20px;
-        border: 1px solid;
-        font-size: 13px;
-        font-family: inherit;
-        font-weight: 600;
-        transition: all 0.2s;
-        user-select: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="text/babel">
-      const { useState, useMemo } = React;
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Z-Test Explorer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', 'Lucida Console', monospace; }
+  input[type=range] { cursor: pointer; }
+  input[type=radio], input[type=checkbox] { cursor: pointer; }
+  sub { font-size: 0.75em; }
+  .theme-toggle {
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer; padding: 5px 12px;
+    border-radius: 20px; border: 1px solid; font-size: 13px;
+    font-family: inherit; font-weight: 600;
+    transition: all 0.2s; user-select: none;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo } = React;
 
-      // ─── Themes ───────────────────────────────────────────────────────────────────
-      const THEMES = {
-        light: {
-          bg: '#f1f5f9',
-          surface: '#ffffff',
-          card: '#ffffff',
-          border: '#cbd5e1',
-          text: '#1e293b',
-          muted: '#64748b',
-          subtle: '#475569',
-          gold: '#b45309',
-          blue: '#2563eb',
-          green: '#16a34a',
-          red: '#dc2626',
-          altSel: '#dbeafe',
-          decReject: '#dcfce7',
-          decFail: '#fee2e2',
-          footer: '#ffffff',
-          muInside: '#f1f5f9',
-          scrollBg: '#e2e8f0',
-          scrollTh: '#94a3b8',
-        },
-        dark: {
-          bg: '#1C2739',
-          surface: '#1e293b',
-          card: '#0f172a',
-          border: '#334155',
-          text: '#e2e8f0',
-          muted: '#64748b',
-          subtle: '#94a3b8',
-          gold: '#f59e0b',
-          blue: '#3b82f6',
-          green: '#22c55e',
-          red: '#ef4444',
-          altSel: '#1e3a5f',
-          decReject: '#14532d88',
-          decFail: '#7f1d1d88',
-          footer: '#0f172a',
-          muInside: '#1e293b',
-          scrollBg: '#1e293b',
-          scrollTh: '#334155',
-        },
-      };
+// ─── Themes ───────────────────────────────────────────────────────────────────
+const THEMES = {
+  light: {
+    bg:      "#f1f5f9",
+    surface: "#ffffff",
+    card:    "#ffffff",
+    border:  "#cbd5e1",
+    text:    "#1e293b",
+    muted:   "#64748b",
+    subtle:  "#475569",
+    gold:    "#b45309",
+    blue:    "#2563eb",
+    green:   "#16a34a",
+    red:     "#dc2626",
+    altSel:  "#dbeafe",
+    decReject:   "#dcfce7",
+    decFail:     "#fee2e2",
+    footer:  "#ffffff",
+    muInside:"#f1f5f9",
+    scrollBg:"#e2e8f0",
+    scrollTh:"#94a3b8",
+  },
+  dark: {
+    bg:      "#1C2739",
+    surface: "#1e293b",
+    card:    "#0f172a",
+    border:  "#334155",
+    text:    "#e2e8f0",
+    muted:   "#64748b",
+    subtle:  "#94a3b8",
+    gold:    "#f59e0b",
+    blue:    "#3b82f6",
+    green:   "#22c55e",
+    red:     "#ef4444",
+    altSel:  "#1e3a5f",
+    decReject:   "#14532d88",
+    decFail:     "#7f1d1d88",
+    footer:  "#0f172a",
+    muInside:"#1e293b",
+    scrollBg:"#1e293b",
+    scrollTh:"#334155",
+  },
+};
 
-      // ─── Math helpers ─────────────────────────────────────────────────────────────
-      function erf(x) {
-        const t = 1 / (1 + 0.3275911 * Math.abs(x));
-        const p =
-          t *
-          (0.254829592 +
-            t *
-              (-0.284496736 +
-                t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
-        return (x >= 0 ? 1 : -1) * (1 - p * Math.exp(-x * x));
-      }
-      function pnorm(z) {
-        return 0.5 * (1 + erf(z / Math.sqrt(2)));
-      }
-      function qnorm(p) {
-        if (p <= 0) return -Infinity;
-        if (p >= 1) return Infinity;
-        const a = [
-          0, -3.969683028665376e1, 2.209460984245205e2, -2.759285104469687e2,
-          1.38357751867269e2, -3.066479806614716e1, 2.506628277459239,
-        ];
-        const b = [
-          0, -5.447609879822406e1, 1.615858368580409e2, -1.556989798598866e2,
-          6.680131188771972e1, -1.328068155288572e1,
-        ];
-        const c = [
-          -7.784894002430293e-3, -3.223964580411365e-1, -2.400758277161838,
-          -2.549732539343734, 4.374664141464968, 2.938163982698783,
-        ];
-        const d = [
-          7.784695709041462e-3, 3.224671290700398e-1, 2.445134137142996,
-          3.754408661907416,
-        ];
-        const pL = 0.02425,
-          pH = 1 - pL;
-        if (p < pL) {
-          const t = Math.sqrt(-2 * Math.log(p));
-          return (
-            (((((c[0] * t + c[1]) * t + c[2]) * t + c[3]) * t + c[4]) * t +
-              c[5]) /
-            ((((d[0] * t + d[1]) * t + d[2]) * t + d[3]) * t + 1)
-          );
-        }
-        if (p <= pH) {
-          const u = p - 0.5,
-            t = u * u;
-          return (
-            (u *
-              (((((a[1] * t + a[2]) * t + a[3]) * t + a[4]) * t + a[5]) * t +
-                a[6])) /
-            (((((b[1] * t + b[2]) * t + b[3]) * t + b[4]) * t + b[5]) * t + 1)
-          );
-        }
-        const t = Math.sqrt(-2 * Math.log(1 - p));
-        return (
-          -(
-            ((((c[0] * t + c[1]) * t + c[2]) * t + c[3]) * t + c[4]) * t +
-            c[5]
-          ) /
-          ((((d[0] * t + d[1]) * t + d[2]) * t + d[3]) * t + 1)
-        );
-      }
-      function dnorm(x) {
-        return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
-      }
+// ─── Math helpers ─────────────────────────────────────────────────────────────
+function erf(x) {
+  const t = 1/(1+0.3275911*Math.abs(x));
+  const p = t*(0.254829592+t*(-0.284496736+t*(1.421413741+t*(-1.453152027+t*1.061405429))));
+  return (x>=0?1:-1)*(1-p*Math.exp(-x*x));
+}
+function pnorm(z){ return 0.5*(1+erf(z/Math.sqrt(2))); }
+function qnorm(p){
+  if(p<=0)return -Infinity; if(p>=1)return Infinity;
+  const a=[0,-3.969683028665376e1,2.209460984245205e2,-2.759285104469687e2,1.383577518672690e2,-3.066479806614716e1,2.506628277459239];
+  const b=[0,-5.447609879822406e1,1.615858368580409e2,-1.556989798598866e2,6.680131188771972e1,-1.328068155288572e1];
+  const c=[-7.784894002430293e-3,-3.223964580411365e-1,-2.400758277161838,-2.549732539343734,4.374664141464968,2.938163982698783];
+  const d=[7.784695709041462e-3,3.224671290700398e-1,2.445134137142996,3.754408661907416];
+  const pL=0.02425,pH=1-pL;
+  if(p<pL){const t=Math.sqrt(-2*Math.log(p));return(((((c[0]*t+c[1])*t+c[2])*t+c[3])*t+c[4])*t+c[5])/((((d[0]*t+d[1])*t+d[2])*t+d[3])*t+1);}
+  if(p<=pH){const u=p-0.5,t=u*u;return u*(((((a[1]*t+a[2])*t+a[3])*t+a[4])*t+a[5])*t+a[6])/(((((b[1]*t+b[2])*t+b[3])*t+b[4])*t+b[5])*t+1);}
+  const t=Math.sqrt(-2*Math.log(1-p));return-(((((c[0]*t+c[1])*t+c[2])*t+c[3])*t+c[4])*t+c[5])/((((d[0]*t+d[1])*t+d[2])*t+d[3])*t+1);
+}
+function dnorm(x){ return Math.exp(-0.5*x*x)/Math.sqrt(2*Math.PI); }
 
-      // ─── Components ───────────────────────────────────────────────────────────────
-      function DualInput({ label, value, min, max, step = 1, onChange, C }) {
-        return (
-          <div style={{ marginBottom: 13 }}>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: 3,
-              }}
-            >
-              <span style={{ fontSize: 13, color: C.subtle }}>{label}</span>
-              <input
-                type="number"
-                value={value}
-                min={min}
-                max={max}
-                step={step}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  if (!isNaN(v)) onChange(Math.min(max, Math.max(min, v)));
-                }}
-                style={{
-                  width: 62,
-                  textAlign: 'right',
-                  fontSize: 13,
-                  fontFamily: 'inherit',
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: `1px solid ${C.border}`,
-                  color: C.gold,
-                  outline: 'none',
-                  padding: '0 2px',
-                }}
-              />
-            </div>
-            <input
-              type="range"
-              min={min}
-              max={max}
-              step={step}
-              value={value}
-              onChange={(e) => onChange(Number(e.target.value))}
-              style={{ width: '100%', accentColor: C.gold }}
-            />
-          </div>
-        );
-      }
+// ─── Components ───────────────────────────────────────────────────────────────
+function DualInput({label, value, min, max, step=1, onChange, C}) {
+  return (
+    <div style={{marginBottom:13}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+        <span style={{fontSize:13,color:C.subtle}}>{label}</span>
+        <input type="number" value={value} min={min} max={max} step={step}
+          onChange={e=>{const v=parseFloat(e.target.value);if(!isNaN(v))onChange(Math.min(max,Math.max(min,v)));}}
+          style={{width:62,textAlign:"right",fontSize:13,fontFamily:"inherit",
+            background:"transparent",border:"none",borderBottom:`1px solid ${C.border}`,
+            color:C.gold,outline:"none",padding:"0 2px"}}/>
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e=>onChange(Number(e.target.value))}
+        style={{width:"100%",accentColor:C.gold}}/>
+    </div>
+  );
+}
 
-      function Card({ title, subtitle, children, style = {}, accent, C }) {
-        return (
-          <div
-            style={{
-              background: C.card,
-              border: `1px solid ${accent || C.border}`,
-              borderRadius: 10,
-              overflow: 'hidden',
-              ...style,
-            }}
-          >
-            {title && (
-              <div
-                style={{
-                  padding: '7px 14px',
-                  borderBottom: `1px solid ${accent || C.border}`,
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  gap: 10,
-                  flexWrap: 'wrap',
-                  fontSize: 12,
-                  letterSpacing: 3,
-                  textTransform: 'uppercase',
-                  color: accent || C.subtle,
-                }}
-              >
-                <span>{title}</span>
-                {subtitle && (
-                  <span
-                    style={{
-                      fontSize: 12,
-                      letterSpacing: 0,
-                      textTransform: 'none',
-                      color: C.muted,
-                      fontWeight: 'normal',
-                    }}
-                  >
-                    {subtitle}
+function Card({title, subtitle, children, style={}, accent, C}) {
+  return (
+    <div style={{background:C.card, border:`1px solid ${accent||C.border}`, borderRadius:10, overflow:"hidden", ...style}}>
+      {title && (
+        <div style={{padding:"7px 14px", borderBottom:`1px solid ${accent||C.border}`,
+          display:"flex", alignItems:"baseline", gap:10, flexWrap:"wrap",
+          fontSize:12, letterSpacing:3, textTransform:"uppercase", color:accent||C.subtle}}>
+          <span>{title}</span>
+          {subtitle && <span style={{fontSize:12,letterSpacing:0,textTransform:"none",color:C.muted,fontWeight:"normal"}}>{subtitle}</span>}
+        </div>
+      )}
+      <div style={{padding:"12px 14px"}}>{children}</div>
+    </div>
+  );
+}
+
+function Badge({label, value, accent, C}) {
+  return (
+    <div style={{background:C.surface, border:`1px solid ${accent||C.border}`,
+      borderRadius:6, padding:"7px 11px", minWidth:88}}>
+      <div style={{fontSize:11, color:C.muted, marginBottom:2}}>{label}</div>
+      <div style={{fontSize:15, color:accent||C.text, fontWeight:700}}>{value}</div>
+    </div>
+  );
+}
+
+// ─── Normal Curve SVG ─────────────────────────────────────────────────────────
+function NormalChart({width, height, zObs, cvLeft, cvRight, alt, mode, decision, alpha, pVal, C}) {
+  const pL=36,pR=14,pT=22,pB=34;
+  const xs=[]; for(let x=-4.5;x<=4.5;x+=0.04)xs.push(x);
+  const yMax=dnorm(0)*1.13;
+  const sx=v=>pL+((v+4.5)/9)*(width-pL-pR);
+  const sy=v=>pT+(1-v/yMax)*(height-pT-pB);
+
+  function areaPts(x0,x1){
+    const pts=xs.filter(x=>x>=x0-0.04&&x<=x1+0.04);
+    if(pts.length<2)return"";
+    return `M${sx(x0).toFixed(1)},${sy(0).toFixed(1)} `
+      +pts.map(x=>`L${sx(x).toFixed(1)},${sy(dnorm(x)).toFixed(1)}`).join(" ")
+      +` L${sx(x1).toFixed(1)},${sy(0).toFixed(1)} Z`;
+  }
+
+  const rejFill = mode==="pvalue"?C.red:(decision?C.green:C.red);
+  const rejPaths=[];
+  if(alt==="two.sided"){
+    if(cvLeft!=null)rejPaths.push({d:areaPts(-4.5,cvLeft),k:"l"});
+    if(cvRight!=null)rejPaths.push({d:areaPts(cvRight,4.5),k:"r"});
+  } else if(alt==="less"&&cvLeft!=null) rejPaths.push({d:areaPts(-4.5,cvLeft),k:"l"});
+  else if(alt==="greater"&&cvRight!=null) rejPaths.push({d:areaPts(cvRight,4.5),k:"r"});
+
+  const pPaths=[];
+  if(mode==="pvalue"&&isFinite(zObs)){
+    if(alt==="two.sided"){const thr=Math.abs(zObs);pPaths.push({d:areaPts(-4.5,-thr),k:"pl"},{d:areaPts(thr,4.5),k:"pr"});}
+    else if(alt==="less") pPaths.push({d:areaPts(-4.5,zObs),k:"p"});
+    else pPaths.push({d:areaPts(zObs,4.5),k:"p"});
+  }
+
+  const linePath=xs.map((x,i)=>`${i===0?"M":"L"}${sx(x).toFixed(1)},${sy(dnorm(x)).toFixed(1)}`).join(" ");
+  const xticks=[-4,-3,-2,-1,0,1,2,3,4];
+  const fp=p=>p<0.0001?p.toExponential(2):p.toFixed(4);
+  const zx=isFinite(zObs)?sx(zObs):null;
+  const labelRight=!isFinite(zObs)||cvRight==null||Math.abs(zObs-cvRight)>0.5;
+
+  return (
+    <svg width={width} height={height} style={{overflow:"visible",display:"block"}}>
+      {rejPaths.map(p=><path key={p.k} d={p.d} fill={rejFill} fillOpacity={mode==="pvalue"?0.15:0.22}/>)}
+      {pPaths.map(p=><path key={p.k} d={p.d} fill={C.green} fillOpacity={0.28}/>)}
+      <path d={linePath} fill="none" stroke={C.subtle} strokeWidth={2}/>
+      <line x1={pL} y1={height-pB} x2={width-pR} y2={height-pB} stroke={C.border} strokeWidth={1}/>
+      <line x1={pL} y1={pT} x2={pL} y2={height-pB} stroke={C.border} strokeWidth={1}/>
+      {xticks.map(t=>(
+        <g key={t}>
+          <line x1={sx(t)} y1={height-pB} x2={sx(t)} y2={height-pB+4} stroke={C.border} strokeWidth={1}/>
+          <text x={sx(t)} y={height-pB+13} textAnchor="middle" fontSize={10} fill={C.muted}>{t}</text>
+        </g>
+      ))}
+      {cvLeft!=null&&<>
+        <line x1={sx(cvLeft)} y1={pT} x2={sx(cvLeft)} y2={height-pB} stroke={C.red} strokeWidth={1.5} strokeDasharray="4,3"/>
+        <text x={sx(cvLeft)} y={height-pB+25} textAnchor="middle" fontSize={11} fill={C.red} fontWeight="700">{cvLeft.toFixed(2)}</text>
+      </>}
+      {cvRight!=null&&<>
+        <line x1={sx(cvRight)} y1={pT} x2={sx(cvRight)} y2={height-pB} stroke={C.red} strokeWidth={1.5} strokeDasharray="4,3"/>
+        <text x={sx(cvRight)} y={height-pB+25} textAnchor="middle" fontSize={11} fill={C.red} fontWeight="700">{cvRight.toFixed(2)}</text>
+      </>}
+      {zx!=null&&<>
+        <line x1={zx} y1={pT} x2={zx} y2={height-pB} stroke={C.gold} strokeWidth={2.2}/>
+        <text x={labelRight?zx+4:zx-4} y={pT+12} fontSize={11} fill={C.gold} fontWeight="700"
+          textAnchor={labelRight?"start":"end"}>z_obs</text>
+        <text x={labelRight?zx+4:zx-4} y={pT+25} fontSize={11} fill={C.gold}
+          textAnchor={labelRight?"start":"end"}>{zObs.toFixed(3)}</text>
+      </>}
+      <text x={(width+pL-pR)/2} y={height-1} textAnchor="middle" fontSize={11} fill={C.muted}>z</text>
+      <text x={9} y={(height+pT-pB)/2} textAnchor="middle" fontSize={11} fill={C.muted}
+        transform={`rotate(-90,9,${(height+pT-pB)/2})`}>Density</text>
+      {mode==="pvalue"&&<>
+        <rect x={pL+4} y={pT+2} width={9} height={9} fill={C.green} fillOpacity={0.5} rx={1}/>
+        <text x={pL+16} y={pT+10} fontSize={10} fill={C.green}>p ({fp(pVal)})</text>
+        <rect x={pL+4} y={pT+14} width={9} height={9} fill={C.red} fillOpacity={0.4} rx={1}/>
+        <text x={pL+16} y={pT+22} fontSize={10} fill={C.red}>α ({alpha})</text>
+      </>}
+    </svg>
+  );
+}
+
+// ─── CI Number Line ───────────────────────────────────────────────────────────
+function CIChart({width, height, ciLow, ciHigh, ybar, mu0, inside, axisMin, axisMax, C}) {
+  const pL=34,pR=24,pT=30,pB=28;
+  if(!isFinite(axisMin)||!isFinite(axisMax))return null;
+  const xMin=axisMin, xMax=axisMax;
+  const sx=v=>pL+((v-xMin)/(xMax-xMin))*(width-pL-pR);
+  const midY=pT+(height-pT-pB)/2;
+  const range=xMax-xMin,rs=range/5;
+  const mag=Math.pow(10,Math.floor(Math.log10(Math.max(rs,1e-9))));
+  const ns=[1,2,2.5,5,10].map(f=>f*mag).find(s=>s>=rs)||mag;
+  const ticks=[];
+  for(let v=Math.ceil(xMin/ns)*ns;v<=xMax+1e-9;v+=ns)ticks.push(parseFloat(v.toFixed(8)));
+  const x1=isFinite(ciLow)?sx(ciLow):pL;
+  const x2=isFinite(ciHigh)?sx(ciHigh):width-pR;
+  const lA=!isFinite(ciLow),rA=!isFinite(ciHigh);
+
+  return (
+    <svg width={width} height={height} style={{display:"block"}}>
+      <defs>
+        {lA&&<marker id="ciAL" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto">
+          <path d="M7,0 L0,3.5 L7,7 Z" fill={C.text}/>
+        </marker>}
+        {rA&&<marker id="ciAR" markerWidth="7" markerHeight="7" refX="0" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" fill={C.text}/>
+        </marker>}
+      </defs>
+      <line x1={pL} y1={midY} x2={width-pR} y2={midY} stroke={C.border} strokeWidth={1.2}/>
+      {ticks.map(t=>(
+        <g key={t}>
+          <line x1={sx(t)} y1={midY-5} x2={sx(t)} y2={midY+5} stroke={C.border} strokeWidth={1}/>
+          <text x={sx(t)} y={midY+17} textAnchor="middle" fontSize={11} fill={C.muted}>
+            {Math.abs(t)<1e-9?0:Number.isInteger(t)?t:t.toFixed(1)}
+          </text>
+        </g>
+      ))}
+      <line x1={x1} y1={midY} x2={x2} y2={midY} stroke={C.text} strokeWidth={3.5} strokeLinecap="butt"
+        markerStart={lA?"url(#ciAL)":undefined} markerEnd={rA?"url(#ciAR)":undefined}/>
+      {!lA&&<line x1={x1} y1={midY-8} x2={x1} y2={midY+8} stroke={C.text} strokeWidth={1.8}/>}
+      {!rA&&<line x1={x2} y1={midY-8} x2={x2} y2={midY+8} stroke={C.text} strokeWidth={1.8}/>}
+      {!lA&&<text x={x1} y={midY-14} textAnchor="middle" fontSize={11} fill={C.subtle}>{ciLow.toFixed(3)}</text>}
+      {!rA&&<text x={x2} y={midY-14} textAnchor="middle" fontSize={11} fill={C.subtle}>{ciHigh.toFixed(3)}</text>}
+      {isFinite(ybar)&&sx(ybar)>=pL&&sx(ybar)<=width-pR&&<>
+        <line x1={sx(ybar)} y1={midY-12} x2={sx(ybar)} y2={midY+12} stroke={C.green} strokeWidth={2.2}/>
+        <text x={sx(ybar)} y={midY-17} textAnchor="middle" fontSize={15} fill={C.green} fontWeight="700">Ȳ</text>
+      </>}
+      {isFinite(mu0)&&sx(mu0)>=pL&&sx(mu0)<=width-pR&&<>
+        <circle cx={sx(mu0)} cy={midY} r={6} fill={inside?C.muInside:C.green} stroke={inside?C.muted:C.green} strokeWidth={2}/>
+        <text x={sx(mu0)} y={midY+25} textAnchor="middle" fontSize={12} fill={inside?C.muted:C.green} fontWeight="700">μ₀</text>
+      </>}
+    </svg>
+  );
+}
+
+// ─── Theme Toggle Button ──────────────────────────────────────────────────────
+function ThemeToggle({dark, onToggle, C}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="theme-toggle"
+      style={{
+        background: C.surface,
+        borderColor: C.border,
+        color: C.subtle,
+      }}
+    >
+      {dark ? "☀ Light" : "☾ Dark"}
+    </button>
+  );
+}
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+function App() {
+  const [dark, setDark] = useState(false);
+  const C = dark ? THEMES.dark : THEMES.light;
+
+  const [ybar, setYbar]   = useState(2);
+  const [sigma, setSigma] = useState(10);
+  const [n, setN]         = useState(30);
+  const [mu0, setMu0]     = useState(0);
+  const [alpha, setAlpha] = useState(0.05);
+  const [alt, setAlt]     = useState("two.sided");
+  const [axisMin, setAxisMin] = useState(-10);
+  const [axisMax, setAxisMax] = useState(10);
+
+  // Keep scrollbar colors in sync with theme
+  React.useEffect(() => {
+    document.body.style.background = C.bg;
+    document.body.style.color = C.text;
+    const style = document.getElementById("scroll-style") || document.createElement("style");
+    style.id = "scroll-style";
+    style.textContent = `::-webkit-scrollbar{width:6px;background:${C.scrollBg}} ::-webkit-scrollbar-thumb{background:${C.scrollTh};border-radius:3px}`;
+    document.head.appendChild(style);
+  }, [dark]);
+
+  const reset=()=>{setYbar(2);setSigma(10);setN(30);setMu0(0);setAlpha(0.05);setAlt("two.sided");setAxisMin(-10);setAxisMax(10);};
+  const conf=1-alpha;
+
+  const S=useMemo(()=>{
+    const se=sigma/Math.sqrt(n);
+    const zObs=(ybar-mu0)/se;
+    let pVal;
+    if(alt==="two.sided") pVal=2*Math.min(pnorm(zObs),1-pnorm(zObs));
+    else if(alt==="less") pVal=pnorm(zObs);
+    else pVal=1-pnorm(zObs);
+    const cvL=alt==="two.sided"?-qnorm(1-alpha/2):alt==="less"?qnorm(alpha):null;
+    const cvR=alt==="two.sided"?qnorm(1-alpha/2):alt==="greater"?qnorm(1-alpha):null;
+    let ciLow,ciHigh;
+    if(alt==="two.sided"){const z=qnorm((1+conf)/2);ciLow=ybar-z*se;ciHigh=ybar+z*se;}
+    else if(alt==="less"){ciLow=-Infinity;ciHigh=ybar+qnorm(conf)*se;}
+    else{ciLow=ybar-qnorm(conf)*se;ciHigh=Infinity;}
+    const reject=pVal<alpha;
+    const inside=mu0>=(isFinite(ciLow)?ciLow:-Infinity)&&mu0<=(isFinite(ciHigh)?ciHigh:Infinity);
+    return{se,zObs,pVal,cvL,cvR,ciLow,ciHigh,reject,inside};
+  },[ybar,sigma,n,mu0,alpha,alt,conf]);
+
+  const fn=(x,d=3)=>isFinite(x)?x.toFixed(d):"—";
+  const fp=p=>p<0.0001?p.toExponential(3):p.toFixed(4);
+
+  const alts=[
+    {v:"two.sided",l:"Two-sided",s:"H₁: Ȳ ≠ μ₀"},
+    {v:"less",l:"Left-tailed",s:"H₁: Ȳ < μ₀"},
+    {v:"greater",l:"Right-tailed",s:"H₁: Ȳ > μ₀"},
+  ];
+  const cp={zObs:S.zObs,cvLeft:S.cvL,cvRight:S.cvR,alt,alpha,pVal:S.pVal,decision:S.reject,C};
+
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Courier New',monospace",padding:"20px 18px",transition:"background 0.2s, color 0.2s"}}>
+
+      {/* ── Header ── */}
+      <div style={{textAlign:"center",marginBottom:20,position:"relative"}}>
+        <div style={{fontSize:12,letterSpacing:6,color:C.gold,textTransform:"uppercase",marginBottom:3}}>Hypothesis Testing</div>
+        <div style={{fontSize:26,fontWeight:700,color:C.text,letterSpacing:1}}>One-Sample Mean Z-Test Explorer</div>
+        <div style={{fontSize:13,color:C.muted,marginTop:3}}>Adjust parameters and watch all three views update in sync</div>
+        {/* Theme toggle — top right */}
+        <div style={{position:"absolute",top:0,right:0}}>
+          <ThemeToggle dark={dark} onToggle={()=>setDark(d=>!d)} C={C}/>
+        </div>
+      </div>
+
+      <div style={{display:"flex",gap:14,maxWidth:1400,margin:"0 auto",alignItems:"flex-start"}}>
+
+        {/* ── Controls ── */}
+        <div style={{width:230,flexShrink:0,display:"flex",flexDirection:"column",gap:10}}>
+          <Card title="Sample Inputs" C={C}>
+            <DualInput label="Sample mean (Ȳ)" value={ybar} min={-10} max={10} step={0.5} onChange={setYbar} C={C}/>
+            <DualInput label="Population SD (σ)" value={sigma} min={0.1} max={25} step={0.5} onChange={setSigma} C={C}/>
+            <DualInput label="Sample size (n)" value={n} min={2} max={100} step={1} onChange={setN} C={C}/>
+          </Card>
+
+          <Card title="Test Setup" C={C}>
+            <DualInput label="Null value (μ₀)" value={mu0} min={-10} max={10} step={0.1} onChange={setMu0} C={C}/>
+            <div style={{marginBottom:11}}>
+              <div style={{fontSize:13,color:C.subtle,marginBottom:6}}>Alternative hypothesis</div>
+              {alts.map(a=>(
+                <label key={a.v} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,cursor:"pointer",
+                  padding:"4px 7px",borderRadius:5,
+                  background:alt===a.v?C.altSel:"transparent",
+                  border:`1px solid ${alt===a.v?C.blue:"transparent"}`,transition:"all 0.15s"}}>
+                  <input type="radio" name="alt" value={a.v} checked={alt===a.v} onChange={()=>setAlt(a.v)} style={{accentColor:C.blue}}/>
+                  <span>
+                    <span style={{fontSize:13,color:C.text}}>{a.l}</span>
+                    <span style={{fontSize:12,color:C.muted,display:"block"}}>{a.s}</span>
                   </span>
-                )}
+                </label>
+              ))}
+            </div>
+            <DualInput label="Significance (α)" value={alpha} min={0.01} max={0.2} step={0.01} onChange={setAlpha} C={C}/>
+          </Card>
+
+          <Card title="CI Plot Axis" C={C}>
+            <div style={{fontSize:13,color:C.subtle,marginBottom:8}}>Set the axis limits for the CI plot independently.</div>
+            <div style={{display:"flex",gap:8,marginBottom:10}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:C.muted,marginBottom:3}}>Min</div>
+                <input type="number" value={axisMin} step={0.5}
+                  onChange={e=>{const v=parseFloat(e.target.value);if(!isNaN(v)&&v<axisMax)setAxisMin(v);}}
+                  style={{width:"100%",fontSize:13,fontFamily:"inherit",textAlign:"center",
+                    background:"transparent",border:`1px solid ${C.border}`,borderRadius:6,
+                    color:C.gold,outline:"none",padding:"5px 8px"}}/>
               </div>
-            )}
-            <div style={{ padding: '12px 14px' }}>{children}</div>
-          </div>
-        );
-      }
-
-      function Badge({ label, value, accent, C }) {
-        return (
-          <div
-            style={{
-              background: C.surface,
-              border: `1px solid ${accent || C.border}`,
-              borderRadius: 6,
-              padding: '7px 11px',
-              minWidth: 88,
-            }}
-          >
-            <div style={{ fontSize: 11, color: C.muted, marginBottom: 2 }}>
-              {label}
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,color:C.muted,marginBottom:3}}>Max</div>
+                <input type="number" value={axisMax} step={0.5}
+                  onChange={e=>{const v=parseFloat(e.target.value);if(!isNaN(v)&&v>axisMin)setAxisMax(v);}}
+                  style={{width:"100%",fontSize:13,fontFamily:"inherit",textAlign:"center",
+                    background:"transparent",border:`1px solid ${C.border}`,borderRadius:6,
+                    color:C.gold,outline:"none",padding:"5px 8px"}}/>
+              </div>
             </div>
-            <div
-              style={{ fontSize: 15, color: accent || C.text, fontWeight: 700 }}
-            >
-              {value}
-            </div>
-          </div>
-        );
-      }
+            <button onClick={()=>{setAxisMin(-10);setAxisMax(10);}}
+              style={{width:"100%",padding:"5px 0",background:"transparent",fontSize:12,
+                border:`1px solid ${C.border}`,borderRadius:6,color:C.muted,
+                cursor:"pointer",fontFamily:"inherit",transition:"all 0.15s"}}>
+              ↺ Reset axis to [−10, 10]
+            </button>
+          </Card>
 
-      // ─── Normal Curve SVG ─────────────────────────────────────────────────────────
-      function NormalChart({
-        width,
-        height,
-        zObs,
-        cvLeft,
-        cvRight,
-        alt,
-        mode,
-        decision,
-        alpha,
-        pVal,
-        C,
-      }) {
-        const pL = 36,
-          pR = 14,
-          pT = 22,
-          pB = 34;
-        const xs = [];
-        for (let x = -4.5; x <= 4.5; x += 0.04) xs.push(x);
-        const yMax = dnorm(0) * 1.13;
-        const sx = (v) => pL + ((v + 4.5) / 9) * (width - pL - pR);
-        const sy = (v) => pT + (1 - v / yMax) * (height - pT - pB);
-
-        function areaPts(x0, x1) {
-          const pts = xs.filter((x) => x >= x0 - 0.04 && x <= x1 + 0.04);
-          if (pts.length < 2) return '';
-          return (
-            `M${sx(x0).toFixed(1)},${sy(0).toFixed(1)} ` +
-            pts
-              .map((x) => `L${sx(x).toFixed(1)},${sy(dnorm(x)).toFixed(1)}`)
-              .join(' ') +
-            ` L${sx(x1).toFixed(1)},${sy(0).toFixed(1)} Z`
-          );
-        }
-
-        const rejFill = mode === 'pvalue' ? C.red : decision ? C.green : C.red;
-        const rejPaths = [];
-        if (alt === 'two.sided') {
-          if (cvLeft != null)
-            rejPaths.push({ d: areaPts(-4.5, cvLeft), k: 'l' });
-          if (cvRight != null)
-            rejPaths.push({ d: areaPts(cvRight, 4.5), k: 'r' });
-        } else if (alt === 'less' && cvLeft != null)
-          rejPaths.push({ d: areaPts(-4.5, cvLeft), k: 'l' });
-        else if (alt === 'greater' && cvRight != null)
-          rejPaths.push({ d: areaPts(cvRight, 4.5), k: 'r' });
-
-        const pPaths = [];
-        if (mode === 'pvalue' && isFinite(zObs)) {
-          if (alt === 'two.sided') {
-            const thr = Math.abs(zObs);
-            pPaths.push(
-              { d: areaPts(-4.5, -thr), k: 'pl' },
-              { d: areaPts(thr, 4.5), k: 'pr' }
-            );
-          } else if (alt === 'less')
-            pPaths.push({ d: areaPts(-4.5, zObs), k: 'p' });
-          else pPaths.push({ d: areaPts(zObs, 4.5), k: 'p' });
-        }
-
-        const linePath = xs
-          .map(
-            (x, i) =>
-              `${i === 0 ? 'M' : 'L'}${sx(x).toFixed(1)},${sy(dnorm(x)).toFixed(
-                1
-              )}`
-          )
-          .join(' ');
-        const xticks = [-4, -3, -2, -1, 0, 1, 2, 3, 4];
-        const fp = (p) => (p < 0.0001 ? p.toExponential(2) : p.toFixed(4));
-        const zx = isFinite(zObs) ? sx(zObs) : null;
-        const labelRight =
-          !isFinite(zObs) || cvRight == null || Math.abs(zObs - cvRight) > 0.5;
-
-        return (
-          <svg
-            width={width}
-            height={height}
-            style={{ overflow: 'visible', display: 'block' }}
-          >
-            {rejPaths.map((p) => (
-              <path
-                key={p.k}
-                d={p.d}
-                fill={rejFill}
-                fillOpacity={mode === 'pvalue' ? 0.15 : 0.22}
-              />
-            ))}
-            {pPaths.map((p) => (
-              <path key={p.k} d={p.d} fill={C.green} fillOpacity={0.28} />
-            ))}
-            <path d={linePath} fill="none" stroke={C.subtle} strokeWidth={2} />
-            <line
-              x1={pL}
-              y1={height - pB}
-              x2={width - pR}
-              y2={height - pB}
-              stroke={C.border}
-              strokeWidth={1}
-            />
-            <line
-              x1={pL}
-              y1={pT}
-              x2={pL}
-              y2={height - pB}
-              stroke={C.border}
-              strokeWidth={1}
-            />
-            {xticks.map((t) => (
-              <g key={t}>
-                <line
-                  x1={sx(t)}
-                  y1={height - pB}
-                  x2={sx(t)}
-                  y2={height - pB + 4}
-                  stroke={C.border}
-                  strokeWidth={1}
-                />
-                <text
-                  x={sx(t)}
-                  y={height - pB + 13}
-                  textAnchor="middle"
-                  fontSize={10}
-                  fill={C.muted}
-                >
-                  {t}
-                </text>
-              </g>
-            ))}
-            {cvLeft != null && (
-              <>
-                <line
-                  x1={sx(cvLeft)}
-                  y1={pT}
-                  x2={sx(cvLeft)}
-                  y2={height - pB}
-                  stroke={C.red}
-                  strokeWidth={1.5}
-                  strokeDasharray="4,3"
-                />
-                <text
-                  x={sx(cvLeft)}
-                  y={height - pB + 25}
-                  textAnchor="middle"
-                  fontSize={11}
-                  fill={C.red}
-                  fontWeight="700"
-                >
-                  {cvLeft.toFixed(2)}
-                </text>
-              </>
-            )}
-            {cvRight != null && (
-              <>
-                <line
-                  x1={sx(cvRight)}
-                  y1={pT}
-                  x2={sx(cvRight)}
-                  y2={height - pB}
-                  stroke={C.red}
-                  strokeWidth={1.5}
-                  strokeDasharray="4,3"
-                />
-                <text
-                  x={sx(cvRight)}
-                  y={height - pB + 25}
-                  textAnchor="middle"
-                  fontSize={11}
-                  fill={C.red}
-                  fontWeight="700"
-                >
-                  {cvRight.toFixed(2)}
-                </text>
-              </>
-            )}
-            {zx != null && (
-              <>
-                <line
-                  x1={zx}
-                  y1={pT}
-                  x2={zx}
-                  y2={height - pB}
-                  stroke={C.gold}
-                  strokeWidth={2.2}
-                />
-                <text
-                  x={labelRight ? zx + 4 : zx - 4}
-                  y={pT + 12}
-                  fontSize={11}
-                  fill={C.gold}
-                  fontWeight="700"
-                  textAnchor={labelRight ? 'start' : 'end'}
-                >
-                  z_obs
-                </text>
-                <text
-                  x={labelRight ? zx + 4 : zx - 4}
-                  y={pT + 25}
-                  fontSize={11}
-                  fill={C.gold}
-                  textAnchor={labelRight ? 'start' : 'end'}
-                >
-                  {zObs.toFixed(3)}
-                </text>
-              </>
-            )}
-            <text
-              x={(width + pL - pR) / 2}
-              y={height - 1}
-              textAnchor="middle"
-              fontSize={11}
-              fill={C.muted}
-            >
-              z
-            </text>
-            <text
-              x={9}
-              y={(height + pT - pB) / 2}
-              textAnchor="middle"
-              fontSize={11}
-              fill={C.muted}
-              transform={`rotate(-90,9,${(height + pT - pB) / 2})`}
-            >
-              Density
-            </text>
-            {mode === 'pvalue' && (
-              <>
-                <rect
-                  x={pL + 4}
-                  y={pT + 2}
-                  width={9}
-                  height={9}
-                  fill={C.green}
-                  fillOpacity={0.5}
-                  rx={1}
-                />
-                <text x={pL + 16} y={pT + 10} fontSize={10} fill={C.green}>
-                  p ({fp(pVal)})
-                </text>
-                <rect
-                  x={pL + 4}
-                  y={pT + 14}
-                  width={9}
-                  height={9}
-                  fill={C.red}
-                  fillOpacity={0.4}
-                  rx={1}
-                />
-                <text x={pL + 16} y={pT + 22} fontSize={10} fill={C.red}>
-                  α ({alpha})
-                </text>
-              </>
-            )}
-          </svg>
-        );
-      }
-
-      // ─── CI Number Line ───────────────────────────────────────────────────────────
-      function CIChart({
-        width,
-        height,
-        ciLow,
-        ciHigh,
-        ybar,
-        mu0,
-        inside,
-        axisMin,
-        axisMax,
-        C,
-      }) {
-        const pL = 34,
-          pR = 24,
-          pT = 30,
-          pB = 28;
-        if (!isFinite(axisMin) || !isFinite(axisMax)) return null;
-        const xMin = axisMin,
-          xMax = axisMax;
-        const sx = (v) => pL + ((v - xMin) / (xMax - xMin)) * (width - pL - pR);
-        const midY = pT + (height - pT - pB) / 2;
-        const range = xMax - xMin,
-          rs = range / 5;
-        const mag = Math.pow(10, Math.floor(Math.log10(Math.max(rs, 1e-9))));
-        const ns =
-          [1, 2, 2.5, 5, 10].map((f) => f * mag).find((s) => s >= rs) || mag;
-        const ticks = [];
-        for (let v = Math.ceil(xMin / ns) * ns; v <= xMax + 1e-9; v += ns)
-          ticks.push(parseFloat(v.toFixed(8)));
-        const x1 = isFinite(ciLow) ? sx(ciLow) : pL;
-        const x2 = isFinite(ciHigh) ? sx(ciHigh) : width - pR;
-        const lA = !isFinite(ciLow),
-          rA = !isFinite(ciHigh);
-
-        return (
-          <svg width={width} height={height} style={{ display: 'block' }}>
-            <defs>
-              {lA && (
-                <marker
-                  id="ciAL"
-                  markerWidth="7"
-                  markerHeight="7"
-                  refX="7"
-                  refY="3.5"
-                  orient="auto"
-                >
-                  <path d="M7,0 L0,3.5 L7,7 Z" fill={C.text} />
-                </marker>
-              )}
-              {rA && (
-                <marker
-                  id="ciAR"
-                  markerWidth="7"
-                  markerHeight="7"
-                  refX="0"
-                  refY="3.5"
-                  orient="auto"
-                >
-                  <path d="M0,0 L7,3.5 L0,7 Z" fill={C.text} />
-                </marker>
-              )}
-            </defs>
-            <line
-              x1={pL}
-              y1={midY}
-              x2={width - pR}
-              y2={midY}
-              stroke={C.border}
-              strokeWidth={1.2}
-            />
-            {ticks.map((t) => (
-              <g key={t}>
-                <line
-                  x1={sx(t)}
-                  y1={midY - 5}
-                  x2={sx(t)}
-                  y2={midY + 5}
-                  stroke={C.border}
-                  strokeWidth={1}
-                />
-                <text
-                  x={sx(t)}
-                  y={midY + 17}
-                  textAnchor="middle"
-                  fontSize={11}
-                  fill={C.muted}
-                >
-                  {Math.abs(t) < 1e-9
-                    ? 0
-                    : Number.isInteger(t)
-                    ? t
-                    : t.toFixed(1)}
-                </text>
-              </g>
-            ))}
-            <line
-              x1={x1}
-              y1={midY}
-              x2={x2}
-              y2={midY}
-              stroke={C.text}
-              strokeWidth={3.5}
-              strokeLinecap="butt"
-              markerStart={lA ? 'url(#ciAL)' : undefined}
-              markerEnd={rA ? 'url(#ciAR)' : undefined}
-            />
-            {!lA && (
-              <line
-                x1={x1}
-                y1={midY - 8}
-                x2={x1}
-                y2={midY + 8}
-                stroke={C.text}
-                strokeWidth={1.8}
-              />
-            )}
-            {!rA && (
-              <line
-                x1={x2}
-                y1={midY - 8}
-                x2={x2}
-                y2={midY + 8}
-                stroke={C.text}
-                strokeWidth={1.8}
-              />
-            )}
-            {!lA && (
-              <text
-                x={x1}
-                y={midY - 14}
-                textAnchor="middle"
-                fontSize={11}
-                fill={C.subtle}
-              >
-                {ciLow.toFixed(3)}
-              </text>
-            )}
-            {!rA && (
-              <text
-                x={x2}
-                y={midY - 14}
-                textAnchor="middle"
-                fontSize={11}
-                fill={C.subtle}
-              >
-                {ciHigh.toFixed(3)}
-              </text>
-            )}
-            {isFinite(ybar) && sx(ybar) >= pL && sx(ybar) <= width - pR && (
-              <>
-                <line
-                  x1={sx(ybar)}
-                  y1={midY - 12}
-                  x2={sx(ybar)}
-                  y2={midY + 12}
-                  stroke={C.green}
-                  strokeWidth={2.2}
-                />
-                <text
-                  x={sx(ybar)}
-                  y={midY - 17}
-                  textAnchor="middle"
-                  fontSize={15}
-                  fill={C.green}
-                  fontWeight="700"
-                >
-                  Ȳ
-                </text>
-              </>
-            )}
-            {isFinite(mu0) && sx(mu0) >= pL && sx(mu0) <= width - pR && (
-              <>
-                <circle
-                  cx={sx(mu0)}
-                  cy={midY}
-                  r={6}
-                  fill={inside ? C.muInside : C.green}
-                  stroke={inside ? C.muted : C.green}
-                  strokeWidth={2}
-                />
-                <text
-                  x={sx(mu0)}
-                  y={midY + 25}
-                  textAnchor="middle"
-                  fontSize={12}
-                  fill={inside ? C.muted : C.green}
-                  fontWeight="700"
-                >
-                  μ₀
-                </text>
-              </>
-            )}
-          </svg>
-        );
-      }
-
-      // ─── Theme Toggle Button ──────────────────────────────────────────────────────
-      function ThemeToggle({ dark, onToggle, C }) {
-        return (
-          <button
-            onClick={onToggle}
-            className="theme-toggle"
-            style={{
-              background: C.surface,
-              borderColor: C.border,
-              color: C.subtle,
-            }}
-          >
-            {dark ? '☀ Light' : '☾ Dark'}
+          <button onClick={reset} style={{width:"100%",padding:"7px 0",background:"transparent",
+            border:`1px solid ${C.border}`,borderRadius:6,color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit",transition:"all 0.15s"}}>
+            ↺ Reset to defaults
           </button>
-        );
-      }
+        </div>
 
-      // ─── App ──────────────────────────────────────────────────────────────────────
-      function App() {
-        const [dark, setDark] = useState(false);
-        const C = dark ? THEMES.dark : THEMES.light;
+        {/* ── Main content ── */}
+        <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:10}}>
 
-        const [ybar, setYbar] = useState(2);
-        const [sigma, setSigma] = useState(10);
-        const [n, setN] = useState(30);
-        const [mu0, setMu0] = useState(0);
-        const [alpha, setAlpha] = useState(0.05);
-        const [alt, setAlt] = useState('two.sided');
-        const [axisZoom, setAxisZoom] = useState(2.5);
-
-        // Keep scrollbar colors in sync with theme
-        React.useEffect(() => {
-          document.body.style.background = C.bg;
-          document.body.style.color = C.text;
-          const style =
-            document.getElementById('scroll-style') ||
-            document.createElement('style');
-          style.id = 'scroll-style';
-          style.textContent = `::-webkit-scrollbar{width:6px;background:${C.scrollBg}} ::-webkit-scrollbar-thumb{background:${C.scrollTh};border-radius:3px}`;
-          document.head.appendChild(style);
-        }, [dark]);
-
-        const reset = () => {
-          setYbar(2);
-          setSigma(10);
-          setN(30);
-          setMu0(0);
-          setAlpha(0.05);
-          setAlt('two.sided');
-          setAxisZoom(2.5);
-        };
-        const conf = 1 - alpha;
-
-        const S = useMemo(() => {
-          const se = sigma / Math.sqrt(n);
-          const zObs = (ybar - mu0) / se;
-          let pVal;
-          if (alt === 'two.sided')
-            pVal = 2 * Math.min(pnorm(zObs), 1 - pnorm(zObs));
-          else if (alt === 'less') pVal = pnorm(zObs);
-          else pVal = 1 - pnorm(zObs);
-          const cvL =
-            alt === 'two.sided'
-              ? -qnorm(1 - alpha / 2)
-              : alt === 'less'
-              ? qnorm(alpha)
-              : null;
-          const cvR =
-            alt === 'two.sided'
-              ? qnorm(1 - alpha / 2)
-              : alt === 'greater'
-              ? qnorm(1 - alpha)
-              : null;
-          let ciLow, ciHigh;
-          if (alt === 'two.sided') {
-            const z = qnorm((1 + conf) / 2);
-            ciLow = ybar - z * se;
-            ciHigh = ybar + z * se;
-          } else if (alt === 'less') {
-            ciLow = -Infinity;
-            ciHigh = ybar + qnorm(conf) * se;
-          } else {
-            ciLow = ybar - qnorm(conf) * se;
-            ciHigh = Infinity;
-          }
-          const reject = pVal < alpha;
-          const inside =
-            mu0 >= (isFinite(ciLow) ? ciLow : -Infinity) &&
-            mu0 <= (isFinite(ciHigh) ? ciHigh : Infinity);
-          // Fixed axis: centered on mu0, half-width = CI half-width * axisZoom so the CI
-          // has room to slide fully in and out of view as Ȳ moves.
-          const ciHalfWidth =
-            isFinite(ciLow) && isFinite(ciHigh)
-              ? (ciHigh - ciLow) / 2
-              : se * qnorm((1 + conf) / 2);
-          const axisHalfSpan = Math.max(ciHalfWidth * axisZoom, se * 3, 0.5);
-          const axisMin = mu0 - axisHalfSpan;
-          const axisMax = mu0 + axisHalfSpan;
-          return {
-            se,
-            zObs,
-            pVal,
-            cvL,
-            cvR,
-            ciLow,
-            ciHigh,
-            reject,
-            inside,
-            axisMin,
-            axisMax,
-          };
-        }, [ybar, sigma, n, mu0, alpha, alt, conf, axisZoom]);
-
-        const fn = (x, d = 3) => (isFinite(x) ? x.toFixed(d) : '—');
-        const fp = (p) => (p < 0.0001 ? p.toExponential(3) : p.toFixed(4));
-
-        const alts = [
-          { v: 'two.sided', l: 'Two-sided', s: 'H₁: Ȳ ≠ μ₀' },
-          { v: 'less', l: 'Left-tailed', s: 'H₁: Ȳ < μ₀' },
-          { v: 'greater', l: 'Right-tailed', s: 'H₁: Ȳ > μ₀' },
-        ];
-        const cp = {
-          zObs: S.zObs,
-          cvLeft: S.cvL,
-          cvRight: S.cvR,
-          alt,
-          alpha,
-          pVal: S.pVal,
-          decision: S.reject,
-          C,
-        };
-
-        return (
-          <div
-            style={{
-              minHeight: '100vh',
-              background: C.bg,
-              color: C.text,
-              fontFamily: "'Courier New',monospace",
-              padding: '20px 18px',
-              transition: 'background 0.2s, color 0.2s',
-            }}
-          >
-            {/* ── Header ── */}
-            <div
-              style={{
-                textAlign: 'center',
-                marginBottom: 20,
-                position: 'relative',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 12,
-                  letterSpacing: 6,
-                  color: C.gold,
-                  textTransform: 'uppercase',
-                  marginBottom: 3,
-                }}
-              >
-                Hypothesis Testing
-              </div>
-              <div
-                style={{
-                  fontSize: 26,
-                  fontWeight: 700,
-                  color: C.text,
-                  letterSpacing: 1,
-                }}
-              >
-                One-Sample Mean Z-Test Explorer
-              </div>
-              <div style={{ fontSize: 13, color: C.muted, marginTop: 3 }}>
-                Adjust parameters and watch all three views update in sync
-              </div>
-              {/* Theme toggle — top right */}
-              <div style={{ position: 'absolute', top: 0, right: 0 }}>
-                <ThemeToggle
-                  dark={dark}
-                  onToggle={() => setDark((d) => !d)}
-                  C={C}
-                />
+          {/* Stats row */}
+          <Card title="Test Statistics" C={C}>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+              <Badge label="SE = σ/√n" value={fn(S.se)} C={C}/>
+              <Badge label="Z_obs" value={fn(S.zObs)} accent={C.gold} C={C}/>
+              <Badge label="p-value" value={fp(S.pVal)} accent={S.reject?C.green:C.red} C={C}/>
+              <Badge label="Lower CV z*" value={S.cvL!=null?fn(S.cvL):"—"} accent={C.gold} C={C}/>
+              <Badge label="Upper CV z*" value={S.cvR!=null?fn(S.cvR):"—"} accent={C.gold} C={C}/>
+              <Badge label={`CI (${(conf*100).toFixed(0)}%)`}
+                value={`[${isFinite(S.ciLow)?fn(S.ciLow):"−∞"}, ${isFinite(S.ciHigh)?fn(S.ciHigh):"+∞"}]`} accent={S.reject?C.green:C.red} C={C}/>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"center",
+                padding:"7px 16px",borderRadius:6,minWidth:130,
+                background:S.reject?C.decReject:C.decFail,
+                border:`1px solid ${S.reject?C.green:C.red}`,
+                fontSize:15,fontWeight:700,color:S.reject?C.green:C.red}}>
+                {S.reject?"Reject H₀":"Fail to Reject H₀"}
               </div>
             </div>
+          </Card>
 
-            <div
-              style={{
-                display: 'flex',
-                gap: 14,
-                maxWidth: 1400,
-                margin: '0 auto',
-                alignItems: 'flex-start',
-              }}
-            >
-              {/* ── Controls ── */}
-              <div
-                style={{
-                  width: 230,
-                  flexShrink: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                }}
-              >
-                <Card title="Sample Inputs" C={C}>
-                  <DualInput
-                    label="Sample mean (Ȳ)"
-                    value={ybar}
-                    min={-10}
-                    max={10}
-                    step={0.5}
-                    onChange={setYbar}
-                    C={C}
-                  />
-                  <DualInput
-                    label="Population SD (σ)"
-                    value={sigma}
-                    min={0.1}
-                    max={25}
-                    step={0.5}
-                    onChange={setSigma}
-                    C={C}
-                  />
-                  <DualInput
-                    label="Sample size (n)"
-                    value={n}
-                    min={2}
-                    max={100}
-                    step={1}
-                    onChange={setN}
-                    C={C}
-                  />
-                </Card>
-
-                <Card title="Test Setup" C={C}>
-                  <DualInput
-                    label="Null value (μ₀)"
-                    value={mu0}
-                    min={-10}
-                    max={10}
-                    step={0.1}
-                    onChange={setMu0}
-                    C={C}
-                  />
-                  <div style={{ marginBottom: 11 }}>
-                    <div
-                      style={{ fontSize: 13, color: C.subtle, marginBottom: 6 }}
-                    >
-                      Alternative hypothesis
-                    </div>
-                    {alts.map((a) => (
-                      <label
-                        key={a.v}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          marginBottom: 5,
-                          cursor: 'pointer',
-                          padding: '4px 7px',
-                          borderRadius: 5,
-                          background: alt === a.v ? C.altSel : 'transparent',
-                          border: `1px solid ${
-                            alt === a.v ? C.blue : 'transparent'
-                          }`,
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          name="alt"
-                          value={a.v}
-                          checked={alt === a.v}
-                          onChange={() => setAlt(a.v)}
-                          style={{ accentColor: C.blue }}
-                        />
-                        <span>
-                          <span style={{ fontSize: 13, color: C.text }}>
-                            {a.l}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 12,
-                              color: C.muted,
-                              display: 'block',
-                            }}
-                          >
-                            {a.s}
-                          </span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                  <DualInput
-                    label="Significance (α)"
-                    value={alpha}
-                    min={0.01}
-                    max={0.2}
-                    step={0.01}
-                    onChange={setAlpha}
-                    C={C}
-                  />
-                </Card>
-
-                <Card title="CI Plot Zoom" C={C}>
-                  <DualInput
-                    label="Axis width (× CI half-width)"
-                    value={axisZoom}
-                    min={1.2}
-                    max={6}
-                    step={0.1}
-                    onChange={setAxisZoom}
-                    C={C}
-                  />
-                  <div style={{ fontSize: 13, color: C.muted }}>
-                    Axis spans{' '}
-                    <span style={{ color: C.gold }}>{axisZoom}×</span> the CI
-                    half-width on each side of μ₀. Drag to zoom in or out.
-                  </div>
-                </Card>
-
-                <button
-                  onClick={reset}
-                  style={{
-                    width: '100%',
-                    padding: '7px 0',
-                    background: 'transparent',
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 6,
-                    color: C.muted,
-                    fontSize: 13,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  ↺ Reset to defaults
-                </button>
-              </div>
-
-              {/* ── Main content ── */}
-              <div
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                }}
-              >
-                {/* Stats row */}
-                <Card title="Test Statistics" C={C}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: 8,
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Badge label="SE = σ/√n" value={fn(S.se)} C={C} />
-                    <Badge
-                      label="Z_obs"
-                      value={fn(S.zObs)}
-                      accent={C.gold}
-                      C={C}
-                    />
-                    <Badge
-                      label="p-value"
-                      value={fp(S.pVal)}
-                      accent={S.reject ? C.green : C.red}
-                      C={C}
-                    />
-                    <Badge
-                      label="Lower CV z*"
-                      value={S.cvL != null ? fn(S.cvL) : '—'}
-                      accent={C.gold}
-                      C={C}
-                    />
-                    <Badge
-                      label="Upper CV z*"
-                      value={S.cvR != null ? fn(S.cvR) : '—'}
-                      accent={C.gold}
-                      C={C}
-                    />
-                    <Badge
-                      label={`CI (${(conf * 100).toFixed(0)}%)`}
-                      value={`[${isFinite(S.ciLow) ? fn(S.ciLow) : '−∞'}, ${
-                        isFinite(S.ciHigh) ? fn(S.ciHigh) : '+∞'
-                      }]`}
-                      accent={S.reject ? C.green : C.red}
-                      C={C}
-                    />
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '7px 16px',
-                        borderRadius: 6,
-                        minWidth: 130,
-                        background: S.reject ? C.decReject : C.decFail,
-                        border: `1px solid ${S.reject ? C.green : C.red}`,
-                        fontSize: 15,
-                        fontWeight: 700,
-                        color: S.reject ? C.green : C.red,
-                      }}
-                    >
-                      {S.reject ? 'Reject H₀' : 'Fail to Reject H₀'}
-                    </div>
-                  </div>
-                </Card>
-
-                {/* Formula row */}
-                <Card C={C}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: 16,
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      fontSize: 14,
-                      color: C.subtle,
-                    }}
-                  >
-                    <span>
-                      Z<sub>obs</sub> = ({ybar.toFixed(2)} − {mu0.toFixed(2)}) /{' '}
-                      {fn(S.se)} ={' '}
-                      <span style={{ color: C.gold, fontWeight: 700 }}>
-                        {fn(S.zObs)}
-                      </span>
-                    </span>
-                    <span style={{ color: C.border }}>|</span>
-                    <span>
-                      α = <span style={{ color: C.red }}>{alpha}</span>
-                    </span>
-                    <span style={{ color: C.border }}>|</span>
-                    <span>
-                      p ={' '}
-                      <span
-                        style={{
-                          color: S.reject ? C.green : C.red,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {fp(S.pVal)}
-                      </span>
-                    </span>
-                    <span style={{ color: C.border }}>|</span>
-                    <span>
-                      p {S.reject ? '<' : '≥'} α →{' '}
-                      <span
-                        style={{
-                          color: S.reject ? C.green : C.red,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {S.reject ? 'Reject H₀' : 'Fail to Reject H₀'}
-                      </span>
-                    </span>
-                  </div>
-                </Card>
-
-                {/* Charts row 1: Critical Value + P-Value */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: 10,
-                  }}
-                >
-                  <Card
-                    title="① Critical Value"
-                    subtitle={
-                      S.reject
-                        ? 'z_obs in rejection region'
-                        : 'z_obs not in rejection region'
-                    }
-                    accent={S.reject ? C.green : C.red}
-                    C={C}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                      <NormalChart
-                        width={370}
-                        height={225}
-                        {...cp}
-                        mode="crit"
-                      />
-                    </div>
-                    <div
-                      style={{
-                        marginTop: 7,
-                        fontSize: 12,
-                        color: C.muted,
-                        textAlign: 'center',
-                        lineHeight: 1.7,
-                      }}
-                    >
-                      Rejection region shaded{' '}
-                      <span style={{ color: S.reject ? C.green : C.red }}>
-                        {S.reject ? 'green' : 'red'}
-                      </span>
-                      . Dashed lines = critical values z*.
-                    </div>
-                  </Card>
-
-                  <Card
-                    title="② P-Value"
-                    subtitle={`p = ${fp(S.pVal)}  ${
-                      S.reject ? '<' : '≥'
-                    }  α = ${alpha}`}
-                    accent={S.reject ? C.green : C.red}
-                    C={C}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                      <NormalChart
-                        width={370}
-                        height={225}
-                        {...cp}
-                        mode="pvalue"
-                      />
-                    </div>
-                    <div
-                      style={{
-                        marginTop: 7,
-                        fontSize: 12,
-                        color: C.muted,
-                        textAlign: 'center',
-                        lineHeight: 1.7,
-                      }}
-                    >
-                      <span style={{ color: C.green }}>Green</span> = p-value.{' '}
-                      <span style={{ color: C.red }}>Red</span> = α region.{' '}
-                      {S.reject ? (
-                        <span style={{ color: C.green }}>
-                          p &lt; α → Reject H₀
-                        </span>
-                      ) : (
-                        <span style={{ color: C.red }}>
-                          p ≥ α → Fail to Reject H₀
-                        </span>
-                      )}
-                    </div>
-                  </Card>
-                </div>
-
-                {/* Chart row 2: CI full width */}
-                <Card
-                  title="③ Confidence Interval"
-                  subtitle={
-                    S.inside
-                      ? `μ₀ = ${mu0} is inside the ${(conf * 100).toFixed(
-                          0
-                        )}% CI → Fail to Reject H₀`
-                      : `μ₀ = ${mu0} is outside the ${(conf * 100).toFixed(
-                          0
-                        )}% CI → Reject H₀`
-                  }
-                  accent={S.inside ? C.red : C.green}
-                  C={C}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      padding: '6px 0 2px',
-                    }}
-                  >
-                    <CIChart
-                      width={740}
-                      height={110}
-                      ciLow={S.ciLow}
-                      ciHigh={S.ciHigh}
-                      ybar={ybar}
-                      mu0={mu0}
-                      inside={S.inside}
-                      axisMin={S.axisMin}
-                      axisMax={S.axisMax}
-                      C={C}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      marginTop: 4,
-                      fontSize: 12,
-                      color: C.muted,
-                      textAlign: 'center',
-                      lineHeight: 1.7,
-                    }}
-                  >
-                    <span style={{ color: C.green }}>
-                      Ȳ = {ybar.toFixed(2)}
-                    </span>{' '}
-                    = sample mean.{' '}
-                    <span style={{ color: S.inside ? C.muted : C.green }}>
-                      μ₀ = {mu0}
-                    </span>{' '}
-                    = null value —{' '}
-                    {S.inside ? (
-                      <span style={{ color: C.red }}>
-                        inside the interval → Fail to Reject H₀
-                      </span>
-                    ) : (
-                      <span style={{ color: C.green }}>
-                        outside the interval → Reject H₀
-                      </span>
-                    )}
-                  </div>
-                </Card>
-
-                {/* Footer note */}
-                <div
-                  style={{
-                    padding: '9px 13px',
-                    background: C.footer,
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 8,
-                    fontSize: 12,
-                    color: C.muted,
-                    lineHeight: 1.9,
-                  }}
-                >
-                  <span style={{ color: C.gold }}>●</span> All three views
-                  always agree: reject H₀ ⟺ z_obs in rejection region ⟺ p &lt; α
-                  ⟺ μ₀ outside the CI. <span style={{ color: C.gold }}>●</span>{' '}
-                  For two-sided tests, the (1−α) CI corresponds exactly to
-                  testing at α. <span style={{ color: C.gold }}>●</span>{' '}
-                  One-sided tests produce semi-infinite CIs.
-                </div>
-              </div>
+          {/* Formula row */}
+          <Card C={C}>
+            <div style={{display:"flex",gap:16,flexWrap:"wrap",alignItems:"center",fontSize:14,color:C.subtle}}>
+              <span>Z<sub>obs</sub> = ({ybar.toFixed(2)} − {mu0.toFixed(2)}) / {fn(S.se)} = <span style={{color:C.gold,fontWeight:700}}>{fn(S.zObs)}</span></span>
+              <span style={{color:C.border}}>|</span>
+              <span>α = <span style={{color:C.red}}>{alpha}</span></span>
+              <span style={{color:C.border}}>|</span>
+              <span>p = <span style={{color:S.reject?C.green:C.red,fontWeight:700}}>{fp(S.pVal)}</span></span>
+              <span style={{color:C.border}}>|</span>
+              <span>p {S.reject?"<":"≥"} α → <span style={{color:S.reject?C.green:C.red,fontWeight:700}}>{S.reject?"Reject H₀":"Fail to Reject H₀"}</span></span>
             </div>
+          </Card>
+
+          {/* Charts row 1: Critical Value + P-Value */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <Card title="① Critical Value"
+              subtitle={S.reject?"z_obs in rejection region":"z_obs not in rejection region"}
+              accent={S.reject?C.green:C.red} C={C}>
+              <div style={{display:"flex",justifyContent:"center"}}>
+                <NormalChart width={370} height={225} {...cp} mode="crit"/>
+              </div>
+              <div style={{marginTop:7,fontSize:12,color:C.muted,textAlign:"center",lineHeight:1.7}}>
+                Rejection region shaded <span style={{color:S.reject?C.green:C.red}}>{S.reject?"green":"red"}</span>.
+                {" "}Dashed lines = critical values z*.
+              </div>
+            </Card>
+
+            <Card title="② P-Value"
+              subtitle={`p = ${fp(S.pVal)}  ${S.reject?"<":"≥"}  α = ${alpha}`}
+              accent={S.reject?C.green:C.red} C={C}>
+              <div style={{display:"flex",justifyContent:"center"}}>
+                <NormalChart width={370} height={225} {...cp} mode="pvalue"/>
+              </div>
+              <div style={{marginTop:7,fontSize:12,color:C.muted,textAlign:"center",lineHeight:1.7}}>
+                <span style={{color:C.green}}>Green</span> = p-value.{" "}
+                <span style={{color:C.red}}>Red</span> = α region.{" "}
+                {S.reject
+                  ?<span style={{color:C.green}}>p &lt; α → Reject H₀</span>
+                  :<span style={{color:C.red}}>p ≥ α → Fail to Reject H₀</span>}
+              </div>
+            </Card>
           </div>
-        );
-      }
 
-      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-    </script>
-  </body>
+          {/* Chart row 2: CI full width */}
+          <Card title="③ Confidence Interval"
+            subtitle={S.inside
+              ?`μ₀ = ${mu0} is inside the ${(conf*100).toFixed(0)}% CI → Fail to Reject H₀`
+              :`μ₀ = ${mu0} is outside the ${(conf*100).toFixed(0)}% CI → Reject H₀`}
+            accent={S.inside?C.red:C.green} C={C}>
+            <div style={{display:"flex",justifyContent:"center",padding:"6px 0 2px"}}>
+              <CIChart width={740} height={110} ciLow={S.ciLow} ciHigh={S.ciHigh}
+                ybar={ybar} mu0={mu0} inside={S.inside} axisMin={axisMin} axisMax={axisMax} C={C}/>
+            </div>
+            <div style={{marginTop:4,fontSize:12,color:C.muted,textAlign:"center",lineHeight:1.7}}>
+              <span style={{color:C.green}}>Ȳ = {ybar.toFixed(2)}</span> = sample mean.{" "}
+              <span style={{color:S.inside?C.muted:C.green}}>μ₀ = {mu0}</span> = null value —{" "}
+              {S.inside
+                ?<span style={{color:C.red}}>inside the interval → Fail to Reject H₀</span>
+                :<span style={{color:C.green}}>outside the interval → Reject H₀</span>}
+            </div>
+          </Card>
+
+          {/* Footer note */}
+          <div style={{padding:"9px 13px",background:C.footer,border:`1px solid ${C.border}`,
+            borderRadius:8,fontSize:12,color:C.muted,lineHeight:1.9}}>
+            <span style={{color:C.gold}}>●</span> All three views always agree: reject H₀ ⟺ z_obs in rejection region ⟺ p &lt; α ⟺ μ₀ outside the CI.{" "}
+            <span style={{color:C.gold}}>●</span> For two-sided tests, the (1−α) CI corresponds exactly to testing at α.{" "}
+            <span style={{color:C.gold}}>●</span> One-sided tests produce semi-infinite CIs.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
 </html>
